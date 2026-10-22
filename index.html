@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10191d">
+  <title>Catch &amp; Carry</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
+
+    :root {
+      color-scheme: dark;
+      --ink: #10191d;
+      --panel: #172328;
+      --line: #314047;
+      --muted: #8d9b9e;
+      --cream: #f1ead8;
+      --mint: #8df0b4;
+      --pink: #ff7c96;
+      --cyan: #65e4ef;
+      --amber: #ffcf70;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      padding: 22px clamp(12px, 4vw, 54px) 28px;
+      color: var(--cream);
+      background-color: var(--ink);
+      background-image: radial-gradient(ellipse at 50% -20%, #30433c 0, transparent 54%),
+        repeating-linear-gradient(0deg, transparent 0 39px, #ffffff08 40px),
+        repeating-linear-gradient(90deg, transparent 0 39px, #ffffff08 40px);
+      font-family: 'DM Mono', monospace;
+    }
+
+    button { font: inherit; }
+
+    .shell { width: min(1080px, 100%); margin: 0 auto; }
+    .topline, .brand-row, .hud, .footer-row { display: flex; align-items: center; justify-content: space-between; }
+    .topline { color: var(--muted); font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase; }
+    .live { display: inline-flex; align-items: center; gap: 8px; }
+    .live::before { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); content: ''; box-shadow: 0 0 12px #8df0b4aa; }
+    .brand-row { align-items: end; margin: 25px 0 19px; }
+    h1 { margin: 0; font: 900 clamp(38px, 7vw, 68px)/.82 'Barlow Condensed', sans-serif; letter-spacing: .3px; text-transform: uppercase; }
+    h1 span { color: var(--mint); }
+    .subtitle { margin: 9px 0 0; color: #a9b4af; font-size: 11px; }
+    .round-tag { padding: 9px 12px; border: 1px solid var(--line); color: var(--amber); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+
+    .hud { gap: 10px; margin-bottom: 10px; }
+    .stat { flex: 1; min-width: 0; padding: 10px 13px 9px; border-left: 2px solid var(--line); background: #19262a; }
+    .stat-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
+    .stat-value { color: var(--cream); font: 700 21px/.95 'Barlow Condensed', sans-serif; }
+    .stat-value.score { color: var(--mint); }
+    .arena-wrap { position: relative; overflow: hidden; border: 1px solid #40524d; background: #152127; box-shadow: 0 20px 70px #0007; }
+    canvas { display: block; width: 100%; height: min(60vh, 530px); min-height: 320px; cursor: crosshair; touch-action: none; }
+    .arena-label { position: absolute; top: 12px; left: 14px; z-index: 1; pointer-events: none; color: #a6b2ae99; font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; }
+    .help { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 13px 0 12px; border-bottom: 1px solid var(--line); }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px 18px; color: #b2bbb5; font-size: 10px; line-height: 1.7; }
+    .controls b { color: var(--cream); font-weight: 500; }
+    kbd { padding: 2px 5px; border: 1px solid #53615e; color: var(--cream); font: inherit; }
+    .portal-legend { display: flex; gap: 13px; font-size: 9px; white-space: nowrap; text-transform: uppercase; }
+    .portal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 9px; height: 9px; border-radius: 50%; }
+    .swatch.cyan { background: var(--cyan); box-shadow: 0 0 9px var(--cyan); }
+    .swatch.pink { background: var(--pink); box-shadow: 0 0 9px var(--pink); }
+    .footer-row { padding-top: 12px; color: #788783; font-size: 9px; letter-spacing: .5px; }
+    .reset { padding: 7px 10px; border: 1px solid var(--line); color: var(--cream); background: transparent; cursor: pointer; font-size: 9px; letter-spacing: .7px; text-transform: uppercase; }
+    .reset:hover { border-color: var(--mint); color: var(--mint); }
+
+    @media (max-width: 600px) {
+      body { padding-top: 15px; }
+      .brand-row { margin-top: 23px; }
+      .round-tag { padding: 7px; font-size: 8px; }
+      .hud { gap: 5px; }
+      .stat { padding: 9px 7px; }
+      .stat-label { font-size: 8px; letter-spacing: .5px; }
+      .stat-value { font-size: 18px; }
+      canvas { height: 56vh; min-height: 340px; }
+      .help { grid-template-columns: 1fr; gap: 10px; }
+      .controls { gap: 4px 11px; font-size: 9px; }
+      .portal-legend { justify-content: flex-start; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topline"><span class="live">Arcade / experiment 01</span><span>Field test: open</span></div>
+    <header class="brand-row">
+      <div><h1>Catch <span>&amp;</span> Carry</h1><p class="subtitle">A little portal practice. A lot of airborne trouble.</p></div>
+      <div class="round-tag">One orb at a time</div>
+    </header>
+    <section class="hud" aria-label="Game status">
+      <div class="stat"><span class="stat-label">Caught</span><span id="score" class="stat-value score">00</span></div>
+      <div class="stat"><span class="stat-label">Best</span><span id="best" class="stat-value">00</span></div>
+      <div class="stat"><span class="stat-label">Round</span><span id="round" class="stat-value">01</span></div>
+      <div class="stat"><span class="stat-label">Time</span><span id="time" class="stat-value">60</span></div>
+    </section>
+    <div class="arena-wrap">
+      <span class="arena-label">Containment chamber / 01</span>
+      <canvas id="game" aria-label="Game arena. Move with WASD or arrow keys, aim with the mouse, and click to shoot portals."></canvas>
+    </div>
+    <div class="help">
+      <div class="controls">
+        <span><b><kbd>WASD</kbd> / <kbd>↑↓←→</kbd></b> move</span>
+        <span><b>Mouse</b> aim</span>
+        <span><b><kbd>Click</kbd></b> shoot cyan portal</span>
+        <span><b><kbd>Right-click</kbd></b> shoot pink portal</span>
+        <span><b>Catch the orb</b> after it exits</span>
+      </div>
+      <div class="portal-legend"><span><i class="swatch cyan"></i>Entry</span><span><i class="swatch pink"></i>Exit</span></div>
+    </div>
+    <div class="footer-row"><span id="status">Both portals open? Let the chase begin.</span><button class="reset" id="restart" type="button">Restart run</button></div>
+  </main>
+<script>
+(() => {
+  const canvas = document.querySelector('#game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.querySelector('#score');
+  const bestEl = document.querySelector('#best');
+  const roundEl = document.querySelector('#round');
+  const timeEl = document.querySelector('#time');
+  const statusEl = document.querySelector('#status');
+  const player = { x: 0, y: 0, radius: 13, speed: 235, angle: 0 };
+  const orb = { x: 0, y: 0, vx: 0, vy: 0, radius: 9, trail: [] };
+  const portals = { cyan: null, pink: null };
+  const keys = new Set();
+  const pointer = { x: 0, y: 0 };
+  let width = 0;
+  let height = 0;
+  let score = 0;
+  let round = 1;
+  let timeLeft = 60;
+  let best = Number(localStorage.getItem('catchCarryBest') || 0);
+  let running = true;
+  let lastTime = 0;
+  let elapsed = 0;
+  let particles = [];
+  bestEl.textContent = String(best).padStart(2, '0');
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = rect.width;
+    height = rect.height;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!player.x) { player.x = width / 2; player.y = height * .72; }
+    player.x = clamp(player.x, 28, width - 28);
+    player.y = clamp(player.y, 30, height - 30);
+    if (!orb.x) spawnOrb();
+    pointer.x = width / 2;
+    pointer.y = height / 2;
+  }
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+  function spawnOrb() {
+    const side = Math.random() < .5 ? -1 : 1;
+    orb.x = side < 0 ? 24 : width - 24;
+    orb.y = 55 + Math.random() * Math.max(100, height - 120);
+    const angle = (Math.random() * .8 - .4) + (side < 0 ? 0 : Math.PI);
+    const speed = 155 + Math.min(round * 9, 110);
+    orb.vx = Math.cos(angle) * speed;
+    orb.vy = Math.sin(angle) * speed;
+    orb.trail = [];
+  }
+
+  function aimAt(event) {
+    const rect = canvas.getBoundingClientRect();
+    pointer.x = event.clientX - rect.left;
+    pointer.y = event.clientY - rect.top;
+    player.angle = Math.atan2(pointer.y - player.y, pointer.x - player.x);
+  }
+
+  function shoot(color) {
+    if (!running) return;
+    const target = { x: clamp(pointer.x, 24, width - 24), y: clamp(pointer.y, 35, height - 24) };
+    portals[color] = target;
+    burst(target.x, target.y, color === 'cyan' ? '#65e4ef' : '#ff7c96', 9);
+    statusEl.textContent = portals.cyan && portals.pink ? 'Portals linked. Lead the orb through, then catch it!' : ` ${color === 'cyan' ? 'Cyan' : 'Pink'} portal placed. Fire the other color to link them.`;
+  }
+
+  function burst(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 35 + Math.random() * 125;
+      particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: .45 + Math.random() * .4, max: .85, color });
+    }
+  }
+
+  function update(dt) {
+    elapsed += dt;
+    if (running) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { timeLeft = 0; running = false; statusEl.textContent = `Time. You caught ${score} orb${score === 1 ? '' : 's'}. Press restart for another run.`; }
+      let dx = 0;
+      let dy = 0;
+      if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
+      if (keys.has('d') || keys.has('arrowright')) dx += 1;
+      if (keys.has('w') || keys.has('arrowup')) dy -= 1;
+      if (keys.has('s') || keys.has('arrowdown')) dy += 1;
+      const magnitude = Math.hypot(dx, dy) || 1;
+      player.x = clamp(player.x + dx / magnitude * player.speed * dt, 20, width - 20);
+      player.y = clamp(player.y + dy / magnitude * player.speed * dt, 24, height - 20);
+      player.angle = Math.atan2(pointer.y - player.y, pointer.x - player.x);
+
+      orb.x += orb.vx * dt;
+      orb.y += orb.vy * dt;
+      orb.trail.push({ x: orb.x, y: orb.y });
+      if (orb.trail.length > 10) orb.trail.shift();
+      if (orb.y < 28 || orb.y > height - 24) orb.vy *= -1;
+
+      if (portals.cyan && portals.pink) {
+        for (const [from, to] of [[portals.cyan, portals.pink], [portals.pink, portals.cyan]]) {
+          if (Math.hypot(orb.x - from.x, orb.y - from.y) < 24) {
+            orb.x = to.x + Math.cos(Math.atan2(orb.vy, orb.vx)) * 27;
+            orb.y = to.y + Math.sin(Math.atan2(orb.vy, orb.vx)) * 27;
+            burst(to.x, to.y, to === portals.pink ? '#ff7c96' : '#65e4ef', 12);
+            statusEl.textContent = 'Orb through! Get in its path and grab it.';
+            break;
+          }
+        }
+      }
+
+      if (Math.hypot(orb.x - player.x, orb.y - player.y) < orb.radius + player.radius + 2) {
+        score++;
+        round = Math.floor(score / 3) + 1;
+        if (score > best) { best = score; localStorage.setItem('catchCarryBest', String(best)); }
+        burst(orb.x, orb.y, '#ffcf70', 20);
+        spawnOrb();
+        statusEl.textContent = 'Nice catch. Another one is on its way.';
+      }
+      if (orb.x < -18 || orb.x > width + 18) {
+        spawnOrb();
+        statusEl.textContent = 'Missed it. Set your portals and try the next one.';
+      }
+      scoreEl.textContent = String(score).padStart(2, '0');
+      bestEl.textContent = String(best).padStart(2, '0');
+      roundEl.textContent = String(round).padStart(2, '0');
+      timeEl.textContent = String(Math.ceil(timeLeft)).padStart(2, '0');
+    }
+    particles = particles.filter(p => p.life > 0);
+    for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+  }
+
+  function drawPortal(portal, color, label) {
+    if (!portal) return;
+    const pulse = 1 + Math.sin(elapsed * 5) * .08;
+    ctx.save();
+    ctx.translate(portal.x, portal.y);
+    ctx.scale(pulse, 1);
+    ctx.shadowBlur = 19;
+    ctx.shadowColor = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 16, 25, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = .24;
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color;
+    ctx.font = '9px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, 0, 39);
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#152127';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = '#b7e4cf0b';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+    for (let y = 0; y < height; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+    ctx.strokeStyle = '#9ac3a022';
+    ctx.setLineDash([3, 8]);
+    ctx.strokeRect(12, 12, width - 24, height - 24);
+    ctx.setLineDash([]);
+
+    drawPortal(portals.cyan, '#65e4ef', 'ENTRY');
+    drawPortal(portals.pink, '#ff7c96', 'EXIT');
+
+    orb.trail.forEach((point, index) => {
+      ctx.globalAlpha = (index + 1) / orb.trail.length * .32;
+      ctx.fillStyle = '#ffcf70';
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 2 + index * .45, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 22;
+    ctx.shadowColor = '#ffcf70';
+    ctx.fillStyle = '#ffdf9c';
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(orb.x - 2.5, orb.y - 2.5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    ctx.fillStyle = '#dbe5cf';
+    ctx.fillRect(2, -4, 22, 8);
+    ctx.fillStyle = '#8df0b4';
+    ctx.fillRect(15, -3, 9, 6);
+    ctx.restore();
+    ctx.fillStyle = '#f1ead8';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#182327';
+    ctx.beginPath();
+    ctx.arc(player.x + Math.cos(player.angle) * 5, player.y + Math.sin(player.angle) * 5, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!running) {
+      ctx.fillStyle = '#10191dba';
+      ctx.fillRect(0, 0, width, height);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f1ead8';
+      ctx.font = '800 42px "Barlow Condensed", sans-serif';
+      ctx.fillText('RUN COMPLETE', width / 2, height / 2 - 8);
+      ctx.fillStyle = '#8df0b4';
+      ctx.font = '11px "DM Mono", monospace';
+      ctx.fillText(`${score} ORBS CAUGHT  /  PRESS RESTART RUN`, width / 2, height / 2 + 18);
+    }
+  }
+
+  function frame(now) {
+    const dt = Math.min((now - lastTime) / 1000 || 0, .04);
+    lastTime = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  canvas.addEventListener('pointermove', aimAt);
+  canvas.addEventListener('pointerdown', event => {
+    aimAt(event);
+    if (event.button === 2) shoot('pink');
+    else if (event.button === 0) shoot('cyan');
+  });
+  canvas.addEventListener('contextmenu', event => event.preventDefault());
+  window.addEventListener('keydown', event => {
+    const key = event.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) event.preventDefault();
+    keys.add(key);
+  });
+  window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
+  window.addEventListener('blur', () => keys.clear());
+  window.addEventListener('resize', resize);
+  document.querySelector('#restart').addEventListener('click', () => {
+    score = 0; round = 1; timeLeft = 60; running = true;
+    portals.cyan = null; portals.pink = null; particles = [];
+    player.x = width / 2; player.y = height * .72;
+    spawnOrb();
+    scoreEl.textContent = '00'; roundEl.textContent = '01'; timeEl.textContent = '60';
+    statusEl.textContent = 'Both portals open? Let the chase begin.';
+  });
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
